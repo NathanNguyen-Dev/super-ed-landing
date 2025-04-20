@@ -15,10 +15,19 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
+import { supabase } from "@/lib/supabaseClient"
 
 export default function LandingPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [dialogProduct, setDialogProduct] = useState("")
+
+  // Waitlist form state
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [interest, setInterest] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle")
+  const [errorMessage, setErrorMessage] = useState("")
 
   const handleProductClick = (productName: string) => {
     setDialogProduct(productName)
@@ -28,6 +37,42 @@ export default function LandingPage() {
   const scrollToWaitlist = () => {
     setIsDialogOpen(false)
     document.getElementById("waitlist")?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  const handleWaitlistSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setIsLoading(true)
+    setSubmitStatus("idle")
+    setErrorMessage("")
+
+    // Basic email validation
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setSubmitStatus("error")
+      setErrorMessage("Please enter a valid email address.")
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from("waitlist")
+        .insert([{ name, email, interest: interest || null }]) // Send interest as null if empty
+
+      if (error) {
+        throw error
+      }
+
+      setSubmitStatus("success")
+      setName("") // Clear form on success
+      setEmail("")
+      setInterest("")
+    } catch (error: any) {
+      console.error("Error submitting to Supabase:", error)
+      setSubmitStatus("error")
+      setErrorMessage(error.message || "Failed to submit form. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -49,7 +94,7 @@ export default function LandingPage() {
       </Dialog>
 
       <header className="border-b">
-        <div className="container flex h-16 items-center justify-between px-4 md:px-6">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4 md:px-6">
           <Link href="/" className="flex items-center gap-2">
             <Image src="/images/logo.png" alt="SuperEd Logo" width={180} height={60} className="h-16 w-auto" />
           </Link>
@@ -71,7 +116,7 @@ export default function LandingPage() {
       </header>
       <main className="flex-1">
         <section className="w-full py-12 md:py-24 lg:py-32 bg-gradient-to-b from-blue-50 to-white">
-          <div className="container px-4 md:px-6">
+          <div className="container mx-auto px-4 md:px-6">
             <div className="flex flex-col items-center space-y-4 text-center">
               <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none">
@@ -100,7 +145,7 @@ export default function LandingPage() {
         </section>
 
         <section id="about" className="w-full py-12 md:py-24 lg:py-32">
-          <div className="container px-4 md:px-6">
+          <div className="container mx-auto px-4 md:px-6">
             <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 items-center">
               <div>
                 <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">
@@ -124,7 +169,7 @@ export default function LandingPage() {
         </section>
 
         <section id="products" className="w-full py-12 md:py-24 lg:py-32 bg-slate-50">
-          <div className="container px-4 md:px-6">
+          <div className="container mx-auto px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Our Products</h2>
@@ -225,7 +270,7 @@ export default function LandingPage() {
         </section>
 
         <section id="waitlist" className="w-full py-12 md:py-24 lg:py-32 bg-slate-800 text-white">
-          <div className="container px-4 md:px-6">
+          <div className="container mx-auto px-4 md:px-6">
             <div className="grid gap-10 lg:grid-cols-2 lg:gap-16 items-center">
               <div>
                 <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">Join Our Waitlist</h2>
@@ -235,7 +280,7 @@ export default function LandingPage() {
                 </p>
               </div>
               <div className="bg-white/20 p-6 rounded-xl backdrop-blur-sm">
-                <form className="space-y-4">
+                <form className="space-y-4" onSubmit={handleWaitlistSubmit}>
                   <div className="space-y-2">
                     <label htmlFor="name" className="text-sm font-medium">
                       Name
@@ -244,6 +289,8 @@ export default function LandingPage() {
                       id="name"
                       placeholder="Enter your name"
                       className="bg-white/30 border-white/40 placeholder:text-white/70 text-white"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
@@ -255,6 +302,9 @@ export default function LandingPage() {
                       type="email"
                       placeholder="Enter your email"
                       className="bg-white/30 border-white/40 placeholder:text-white/70 text-white"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
                     />
                   </div>
                   <div className="space-y-2">
@@ -264,6 +314,8 @@ export default function LandingPage() {
                     <select
                       id="interest"
                       className="w-full h-10 px-3 py-2 bg-white/30 border border-white/40 rounded-md text-white"
+                      value={interest}
+                      onChange={(e) => setInterest(e.target.value)}
                     >
                       <option value="" className="bg-slate-800">
                         Select an option
@@ -282,7 +334,21 @@ export default function LandingPage() {
                       </option>
                     </select>
                   </div>
-                  <Button className="w-full bg-white text-slate-800 hover:bg-white/90">Join the Wait List</Button>
+                  <Button
+                    type="submit"
+                    className="w-full bg-white text-slate-800 hover:bg-white/90"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Joining..." : "Join the Wait List"}
+                  </Button>
+                  {submitStatus === "success" && (
+                    <p className="text-green-400 text-sm text-center">Thanks for joining the waitlist!</p>
+                  )}
+                  {submitStatus === "error" && (
+                    <p className="text-red-400 text-sm text-center">
+                      {errorMessage || "Something went wrong. Please try again."}
+                    </p>
+                  )}
                 </form>
               </div>
             </div>
@@ -290,7 +356,7 @@ export default function LandingPage() {
         </section>
       </main>
       <footer className="border-t bg-slate-50">
-        <div className="container flex flex-col gap-4 py-10 md:flex-row md:gap-8 md:py-12 px-4 md:px-6">
+        <div className="container mx-auto flex flex-col gap-4 py-10 md:flex-row md:gap-8 md:py-12 px-4 md:px-6">
           <div className="flex flex-col gap-2 md:gap-4 md:flex-1">
             <Link href="/" className="flex items-center gap-2">
               <Image src="/images/logo.png" alt="SuperEd Logo" width={150} height={50} className="h-12 w-auto" />
@@ -367,7 +433,7 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
-        <div className="container flex flex-col items-center justify-between gap-4 py-6 md:h-14 md:flex-row md:py-0 px-4 md:px-6 border-t">
+        <div className="container mx-auto flex flex-col items-center justify-between gap-4 py-6 md:h-14 md:flex-row md:py-0 px-4 md:px-6 border-t">
           <p className="text-xs text-muted-foreground">
             &copy; {new Date().getFullYear()} SuperEd. All rights reserved.
           </p>
